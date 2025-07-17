@@ -1,0 +1,217 @@
+---
+title: "Environmental Health Inspection Metrics"
+logo: "I:/logo.png"
+format: 
+  dashboard:
+    theme: 
+      - custom.scss
+    orientation: columns
+mainfont: Serif
+editor: visual
+embed-resources: true
+---
+
+```{r global, include = FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+
+pacman::p_load(rpivotTable, crosstalk, reactable, htmltools)
+
+source("I:/scripts/00_load_and_clean.R", local = knitr::knit_global())
+source("I:/01_create_master_df.R", local = knitr::knit_global())
+source("I:/02_create_viz.R", local = knitr::knit_global())
+
+master_eh_data <- master_eh_data %>%
+  select(-c(source))
+
+# [AJA] moved subtitle portion of YAML to inline below so that it grabs the correct file's ctime after file name is standardized (script 00_load_and_clean.R)
+
+```
+
+---
+subtitle: "`r strtrim(paste0('Last Updated: ', file.info(paste0('I:/data/Inspection_Manager_',gsub('-', '.', Sys.Date()),'.csv'))$ctime), width = 33)`"
+---
+
+```{=html}
+<script type="text/javascript" src="I:/resources/export_renderers.min.js"></script>
+```
+
+# Interactive Report Builder
+
+## Column
+
+### Pivot Table
+
+```{r pivot table}
+pivot <- rpivotTable(master_eh_data,
+        elementId = "eh_pivot_table",
+        renderers = list(`TSV Export` = htmlwidgets::JS('$.extend($.pivotUtilities.export_renderers, $.pivotUtilities.renderers)'),
+                         Table = htmlwidgets::JS('$.pivotUtilities.renderers["Table"]')),
+        rendererName = "Table",
+      aggregators = list(Count = htmlwidgets::JS('$.pivotUtilities.aggregators["Count"]')),
+      sorters = "
+            function(attr) { 
+var sortAs = $.pivotUtilities.sortAs;
+if (attr == \"month\") { return sortAs([\"Oct\", \"Nov\", \"Dec\", \"Jan\", \"Feb\", \"Mar\", \"Apr\", \"May\", \"Jun\", \"Jul\", \"Aug\"]); }
+}
+      
+      "
+)
+
+
+pivot$x$params$renderers = pivot$x$params$renderers[[1]]
+pivot$x$params$aggregators = pivot$x$params$aggregators[[1]]
+
+pivot
+```
+
+# Visuals
+
+::: panel-tabset
+## Inspector
+
+```{r Viz 1, echo=FALSE}
+viz1
+```
+
+## Inspection Type (Major)
+
+```{r Viz 2, echo=FALSE}
+viz2
+```
+
+## Inspection Type (Minor)
+
+```{r Viz 3, echo=FALSE}
+viz3
+```
+:::
+
+# How-to Guide
+
+[[**Drag-and-Drop to Create a Table**]{.underline}]{style="font-size: 25px !important;"}
+
+When you first open the report, you should see a blank table that looks something like the image below:
+
+![](images/table1.png){fig-align="center"}
+
+[**Row Names**]{style="font-size: 20px !important;"}
+
+Notice that all of the available variables are listed in a box at the top of the window. To create a new row in the table, drag and drop the desired variable into the vertical column (pictured below) to the left of the table that currently displays the overall total.
+
+![](images/table2.png){fig-align="center"}
+
+Notice that when you drag a variable into this column, values of the chosen variable will now make up the row names within your table (as shown below).
+
+![](images/table3.png){fig-align="center"}
+
+You may also drag and drop multiple variables into this column at one time. Notice that the order that the variables are listed in this column will determine the nesting of row names. For example, in the image below, "employee" is listed before "inspection type major", thus the rows display counts for each employee and those counts are then broken into different categories of the "inspection type major" variable per employee.
+
+![](images/table4.png){fig-align="center"}
+
+On the other hand, if we were to list "inspection type major" before "employee" within this column, the rows would display counts for each major inspection type and those counts would be broken down into different categories of the employee variable per inspection type (as shown below).
+
+![](images/table5.png){fig-align="center"}
+
+[**Column Headers**]{style="font-size: 20px !important; padding-top: 30px !important;"}
+
+To create a new column within the pivot table, drag and drop the desired variable into the horizontal row (pictured below) above the table that currently displays the overall total.
+
+![](images/table6.png){fig-align="center"}
+
+Notice that when you drag a variable into this row, values of the chosen variable will now make up the column headers within your table. Again, the order in which these variables are listed within this section will determine the nesting of column headers.
+
+![](images/table7.png){fig-align="center"}
+
+Similarly to what was demonstrated above with the row names, you can drag and drop multiple variables into this section to create nested column headers. For example, in the image below, "month" is listed before "week of month", thus the columns display counts for each month and those counts are broken down into different categories of the "week of month" variable per month (as shown below).
+
+![](images/table8.png){fig-align="center"}
+
+On the other hand, if we were to list "week of month" before "month" within this row, the columns would display counts for each week of the month and those counts would be broken down into different categories of the month variable per week of month (as shown below).
+
+![](images/table9.png){fig-align="center"}
+
+The appearance of the final table is completely up to the user, so feel free to play around with different combinations of variables making up the row names and column headers to create a table that suits your needs!
+
+[[**Drop-Down 1**]{.underline}]{style="font-size: 25px !important; padding-top: 30px !important;"}
+
+![](images/drop_down1.png){fig-align="center" width="250"}
+
+The first drop-down (the one that says "Table" by default) can be used to change the pivot table output appearance. By default, the pivot table will display as a table similar to what you would see in an excel document.
+
+Other options for this drop-down include:
+
+-   **TSV Export** - This option provides users with the ability to copy/paste the pivot table output into a blank excel document. "TSV" stands for tab-separated values; when pasted into a blank workbook, each value will automatically populate its own cell due to this formatting.
+
+-   **Table Barchart** - This option is very similar to the default "Table" output, except it also provides a visual component as well. In addition to displaying the counts within each cell, a bar is also included with a height relative to the value displayed so the user can quickly look at the count distribution in both numeric and visual formats.
+
+-   **Heatmap** - This option also provides a visual component to view the counts in the table. Instead of displaying bars, the cells are colored relative to the value within. Greater values are shaded darker than lesser values, so the user is quickly able to tell where the greater/lesser values lie. The values are shaded relative to all values contained within the entire table while using this output option.
+
+-   **Row Heatmap** - This option is very similar to the "Heatmap" option, except with this option the values are shaded relative to all values contained within the same *row* rather than comparing them to all other values in the entire table.
+
+-   **Column Heatmap** - This option is very similar to the "Heatmap" option, except with this option the values are shaded relative to all values contained within the same *column* rather than comparing them to all other values in the entire table.
+
+    </br>
+
+::: {.callout-caution icon="false"}
+Please note that there is currently a glitch in all 3 of the heatmap output options for this report. The row and column totals do not seem to be shaded correctly and seem to ignore the shading rules. If you use any of these 3 options, please be aware of this issue and ignore the shading for those sections.
+:::
+
+[[**Drop-Down 2**]{.underline}]{style="font-size: 25px !important; padding-top: 30px !important;"}
+
+![](images/drop_down2.png){fig-align="center" width="250"}
+
+The second drop-down (the one that says "Count" by default) should be ignored for now. This drop-down would typically show different options for how the values within the pivot table cells are calculated. For the purposes of this report, we have restricted this drop-down to only provide counts within the pivot table cells.
+
+[[**Sorting**]{.underline}]{style="font-size: 25px !important; padding-top: 30px !important;"}
+
+There are 2 buttons available to alter how the rows and columns are sorted within the pivot table.
+
+[**Sorting Rows**]{style="font-size: 20px !important;"}
+
+The vertical arrows (shown below) can be used to edit the how rows are sorted.
+
+![](images/table10.png){fig-align="center" width="250"}
+
+If you press this button once, the rows will be sorted in ascending order in relation to the row totals. You can tell that the rows are sorted in ascending order when the arrow is pointing downwards (as shown below).
+
+![](images/table11.png){fig-align="center"}
+
+If you press this button a second time, the rows will be sorted in descending order in relation to the row totals instead. This time, you can tell that the rows are sorted in descending order when the arrow is pointing upwards (as shown below).
+
+![](images/table12.png){fig-align="center"}
+
+If you press this arrow a third time, this will disable the row sorting. You can tell when the row sorting is disabled when the arrow returns to its original appearance with arrow heads pointing both directions.
+
+[**Sorting Columns**]{style="font-size: 20px !important;"}
+
+The horizontal arrows (shown below) edit how the columns are sorted.
+
+![](images/table13.png){fig-align="center" width="250"}
+
+If you press this button once, the columns will be sorted in ascending order in relation to the column totals. You can tell that the columns are sorted in ascending order when the arrow is pointing to the right (as shown below).
+
+![](images/table14.png){fig-align="center"}
+
+If you press this button a second time, the columns will be sorted in descending order in relation to the column totals instead. This time, you can tell that the columns are sorted in descending order when the arrow is pointing to the left (as shown below).
+
+![](images/table15.png){fig-align="center"}
+
+If you press this arrow a third time, this will disable the column sorting. You can tell when the column sorting is disabled when the arrow returns to its original appearance with arrow heads pointing both directions.
+
+[[**Filtering**]{.underline}]{style="font-size: 25px !important; padding-top: 30px !important;"}
+
+Filtering may be applied to all of the variables listed on the Interactive Report Builder page, whether they are included as rows/columns in the table or not.
+
+To filter a specific variable, simply click on the drop-down arrow next to the variable's name. This will trigger a pop-up window that allows you to check which values you want included in the table (as shown below).
+
+![](images/filter1.png){fig-align="center" width="500"}
+
+You have a few different options for selecting values that you want included in the table:
+
+1.  You can un-check values that you want excluded, individually
+2.  You can press the "Select None" button and individually check the values that you want included in the table
+3.  You can press the "Select All" button to un-do any un-checking that had been applied and individually un-check values that you want excluded from the table
+
+Once you are done editing your selections, press the "Apply" button at the bottom of this pop-up window and all of the checked values will appear in the table, while all of the un-checked values will be filtered out.
+
+Filtering can be applied to all, some or none of the variables. Again, variables can be filtered whether or not they are included as row names or column headers.
